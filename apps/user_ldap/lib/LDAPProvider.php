@@ -306,4 +306,35 @@ class LDAPProvider implements ILDAPProvider, IDeletionFlagSupport {
 		}
 		return $this->groupBackend->getLDAPAccess($gid)->getConnection()->getConfiguration()['ldap_group_member_assoc_attribute'];
 	}
+
+	/**
+	 * Get an LDAP attribute for a nextcloud user
+	 * @param string $uid the nextcloud user id to get the attribute for
+	 * @param string $attribute the name of the attribute to read
+	 * @return string|null
+	 * @throws \Exception if user id was not found in LDAP
+	 */
+	public function getLDAPAttribute(string $uid, string $attribute): ?string {
+		if (!$this->userBackend->userExists($uid)) {
+			throw new \Exception('User id not found in LDAP');
+		}
+		$access = $this->userBackend->getLDAPAccess($uid);
+		$connection = $access->getConnection();
+		$key = $uid . "::" . $attribute;
+		$cached = $connection->getFromCache($key);
+
+		if ($cached !== null) {
+			return $cached;
+		}
+
+		$value = $access->readAttribute($access->username2dn($uid), $attribute);
+		if (count($value) > 0) {
+			$value = current($value);
+		} else {
+			return null;
+		}
+		$connection->writeToCache($key, $value);
+
+		return $value;
+	}
 }

@@ -157,4 +157,14 @@ interface ILDAPProvider {
 	 * @since 13.0.0
 	 */
 	public function getLDAPGroupMemberAssoc($gid);
+
+	/**
+	 * Get an LDAP attribute for a nextcloud user
+	 * @param string $uid the nextcloud user id to get the attribute for
+	 * @param string $attribute the name of the attribute to read
+	 * @return string|null
+	 * @throws \Exception if user id was not found in LDAP
+	 * @since 22.0.0
+	 */
+	public function getLDAPAttribute(string $uid, string $attribute): ?string;
 }
