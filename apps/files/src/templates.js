@@ -47,7 +47,7 @@ TemplatePickerRoot.id = 'template-picker'
 document.body.appendChild(TemplatePickerRoot)
 
 // Retrieve and init templates
-const templates = loadState('files', 'templates')
+const templates = loadState('files', 'templates', [])
 logger.debug('Templates providers', templates)
 
 // Init vue app
