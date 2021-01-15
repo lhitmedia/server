@@ -36,6 +36,7 @@ use OCP\Files\NotFoundException;
 use OCP\Files\Template\CreatedFromTemplateEvent;
 use OCP\Files\Template\ICustomTemplateProvider;
 use OCP\Files\Template\ITemplateManager;
+use OCP\Files\Template\Template;
 use OCP\Files\Template\TemplateFileCreator;
 use OCP\IConfig;
 use OCP\IPreview;
@@ -169,11 +170,13 @@ class TemplateManager implements ITemplateManager {
 		}
 		foreach ($type->getMimetypes() as $mimetype) {
 			foreach ($userTemplateFolder->searchByMime($mimetype) as $templateFile) {
-				$templates[] = new \OCP\Files\Template\Template(
+				$template = new Template(
 					'user',
 					$this->rootFolder->getUserFolder($this->userId)->getRelativePath($templateFile->getPath()),
 					$templateFile
 				);
+				$template->setHasPreview($this->previewManager->isAvailable($templateFile));
+				$templates[] = $template;
 			}
 		}
 

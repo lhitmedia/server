@@ -27,12 +27,12 @@ declare(strict_types=1);
 namespace OCP\Files\Template;
 
 use OCP\Files\File;
-use OCP\IPreview;
 
 class Template implements \JsonSerializable {
 	protected $templateType;
 	protected $templateId;
 	protected $file;
+	protected $hasPreview = false;
 	protected $previewUrl;
 
 	final public function __construct(string $templateType, string $templateId, File $file) {
@@ -43,6 +43,10 @@ class Template implements \JsonSerializable {
 
 	final public function setCustomPreviewUrl(string $previewUrl): void {
 		$this->previewUrl = $previewUrl;
+	}
+
+	final public function setHasPreview(bool $hasPreview): void {
+		$this->hasPreview = $hasPreview;
 	}
 
 	final public function jsonSerialize() {
@@ -57,7 +61,7 @@ class Template implements \JsonSerializable {
 			'mime' => $this->file->getMimetype(),
 			'size' => $this->file->getSize(),
 			'type' => $this->file->getType(),
-			'hasPreview' => \OC::$server->get(IPreview::class)->isAvailable($this->file),
+			'hasPreview' => $this->hasPreview,
 			'previewUrl' => $this->previewUrl
 		];
 	}
