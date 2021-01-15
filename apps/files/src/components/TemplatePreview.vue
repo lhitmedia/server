@@ -71,6 +71,10 @@ export default {
 			type: String,
 			required: true,
 		},
+		previewUrl: {
+			type: String,
+			default: null,
+		},
 		hasPreview: {
 			type: Boolean,
 			default: true,
@@ -92,12 +96,15 @@ export default {
 			return `template-picker-${this.fileid}`
 		},
 
-		previewUrl() {
+		realPreviewUrl() {
 			// If original preview failed, fallback to mime icon
 			if (this.failedPreview && this.mimeIcon) {
 				return generateUrl(this.mimeIcon)
 			}
 
+			if (this.previewUrl) {
+				return this.previewUrl
+			}
 			// TODO: find a nicer standard way of doing this?
 			if (isPublic()) {
 				return generateUrl(`/apps/files_sharing/publicpreview/${getToken()}?fileId=${this.fileid}&file=${encodeFilePath(this.filename)}&x=${width}&y=${width}`)

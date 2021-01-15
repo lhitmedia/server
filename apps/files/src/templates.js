@@ -79,7 +79,7 @@ window.addEventListener('DOMContentLoaded', function() {
 					id: `template-new-${provider.app}-${index}`,
 					displayName: provider.label,
 					templateName: provider.label + provider.extension,
-					iconClass: provider.icon || 'icon-file',
+					iconClass: provider.iconClass || 'icon-file',
 					fileType: 'file',
 					actionHandler(name) {
 						TemplatePicker.open(name, provider)

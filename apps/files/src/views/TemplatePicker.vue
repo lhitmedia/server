@@ -156,6 +156,7 @@ export default {
 				const response = await axios.post(generateOcsUrl('apps/files/api/v1/templates', 2) + 'create', {
 					filePath: `${currentDirectory}/${this.name}`,
 					templatePath: this.selectedTemplate?.filename,
+					templateType: this.selectedTemplate?.templateType,
 				})
 
 				const fileInfo = response.data.ocs.data
