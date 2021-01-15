@@ -295,7 +295,7 @@ class ViewController extends Controller {
 			$this->eventDispatcher->dispatchTyped(new LoadViewer());
 		}
 		$this->initialState->provideInitialState('template_path', $this->templateManager->hasTemplateDirectory() ? $this->templateManager->getTemplatePath() : null);
-		$this->initialState->provideInitialState('templates', $this->templateManager->listMimetypes());
+		$this->initialState->provideInitialState('templates', $this->templateManager->listCreators());
 
 		$params = [];
 		$params['usedSpacePercent'] = (int) $storageInfo['relative'];

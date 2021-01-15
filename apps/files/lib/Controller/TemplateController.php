@@ -33,7 +33,6 @@ use OCP\Files\Template\ITemplateManager;
 use OCP\IRequest;
 
 class TemplateController extends OCSController {
-
 	protected $templateManager;
 
 	public function __construct($appName, IRequest $request, ITemplateManager $templateManager) {
@@ -45,16 +44,16 @@ class TemplateController extends OCSController {
 	 * @NoAdminRequired
 	 */
 	public function list(): DataResponse {
-		return new DataResponse($this->templateManager->listMimetypes());
+		return new DataResponse($this->templateManager->listCreators());
 	}
 
 	/**
 	 * @NoAdminRequired
 	 * @throws OCSForbiddenException
 	 */
-	public function create(string $filePath, string $templatePath = ''): DataResponse {
+	public function create(string $filePath, string $templatePath = '', string $templateType = 'user'): DataResponse {
 		try {
-			return new DataResponse($this->templateManager->createFromTemplate($filePath, $templatePath));
+			return new DataResponse($this->templateManager->createFromTemplate($filePath, $templatePath, $templateType));
 		} catch (GenericFileException $e) {
 			throw new OCSForbiddenException($e->getMessage());
 		}
@@ -74,5 +73,4 @@ class TemplateController extends OCSController {
 			throw new OCSForbiddenException($e->getMessage());
 		}
 	}
-
 }

@@ -36,18 +36,27 @@ interface ITemplateManager {
 	/**
 	 * Register a template type support
 	 *
-	 * @param TemplateType $templateType
+	 * @param TemplateFileCreator $templateType
 	 * @since 21.0.0
 	 */
-	public function registerTemplateType(TemplateType $templateType): void;
+	public function registerTemplateFileCreator(TemplateFileCreator $templateType): void;
 
 	/**
-	 * Get a list of available templates grouped by their type
+	 * Register a custom template provider class that is able to inject custom templates
+	 * in addition to the user defined ones
+	 *
+	 * @param string $providerClass
+	 * @since 21.0.0
+	 */
+	public function registerTemplateProvider(string $providerClass): void;
+
+	/**
+	 * Get a list of available file creators and their offered templates
 	 *
 	 * @return array
 	 * @since 21.0.0
 	 */
-	public function listMimetypes(): array;
+	public function listCreators(): array;
 
 	/**
 	 * @return bool
@@ -76,11 +85,10 @@ interface ITemplateManager {
 
 	/**
 	 * @param string $filePath
-	 * @param string $templatePath
-	 * @throws GenericFileException
+	 * @param string $templateId
 	 * @return array
+	 * @throws GenericFileException
 	 * @since 21.0.0
 	 */
-	public function createFromTemplate(string $filePath, string $templatePath = ''): array;
-
+	public function createFromTemplate(string $filePath, string $templateId = '', string $templateType = 'user'): array;
 }

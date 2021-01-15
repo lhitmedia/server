@@ -26,27 +26,32 @@ declare(strict_types=1);
 
 namespace OC\Files\Template;
 
-use OC\User\NoUserException;
+use OCP\EventDispatcher\IEventDispatcher;
 use OCP\Files\Folder;
 use OCP\Files\File;
 use OCP\Files\GenericFileException;
 use OCP\Files\IRootFolder;
 use OCP\Files\Node;
 use OCP\Files\NotFoundException;
-use OCP\Files\NotPermittedException;
+use OCP\Files\Template\CreatedFromTemplateEvent;
+use OCP\Files\Template\ICustomTemplateProvider;
 use OCP\Files\Template\ITemplateManager;
-use OCP\Files\Template\TemplateType;
+use OCP\Files\Template\TemplateFileCreator;
 use OCP\IConfig;
-use OCP\IL10N;
 use OCP\IPreview;
+use OCP\IServerContainer;
 use OCP\IUserSession;
 use OCP\L10N\IFactory;
 use Psr\Log\LoggerInterface;
 
 class TemplateManager implements ITemplateManager {
-
 	private $types = [];
 
+	private $registeredProviders = [];
+	private $providers;
+
+	private $serverContainer;
+	private $eventDispatcher;
 	private $rootFolder;
 	private $previewManager;
 	private $config;
@@ -55,6 +60,8 @@ class TemplateManager implements ITemplateManager {
 	private $userId;
 
 	public function __construct(
+		IServerContainer $serverContainer,
+		IEventDispatcher $eventDispatcher,
 		IRootFolder $rootFolder,
 		IUserSession $userSession,
 		IPreview $previewManager,
@@ -62,6 +69,8 @@ class TemplateManager implements ITemplateManager {
 		IFactory $l10n,
 		LoggerInterface $logger
 	) {
+		$this->serverContainer = $serverContainer;
+		$this->eventDispatcher = $eventDispatcher;
 		$this->rootFolder = $rootFolder;
 		$this->previewManager = $previewManager;
 		$this->config = $config;
@@ -71,46 +80,67 @@ class TemplateManager implements ITemplateManager {
 		$this->userId = $user ? $user->getUID() : null;
 	}
 
-	public function registerTemplateType(TemplateType $templateType): void {
+	public function registerTemplateFileCreator(TemplateFileCreator $templateType): void {
 		$this->types[] = $templateType;
 	}
 
-	public function listMimetypes(): array {
-		return array_map(function (TemplateType $entry) {
+	public function registerTemplateProvider(string $providerClass): void {
+		$this->registeredProviders[] = $providerClass;
+	}
+
+	public function getRegisteredProviders(): array {
+		if ($this->providers !== null) {
+			return $this->providers;
+		}
+		$this->providers = [];
+		foreach ($this->registeredProviders as $providerClass) {
+			$this->providers[$providerClass] = $this->serverContainer->get($providerClass);
+		}
+		return $this->providers;
+	}
+
+	public function listCreators(): array {
+		return array_map(function (TemplateFileCreator $entry) {
 			return array_merge($entry->jsonSerialize(), [
-				'templates' => array_map(function (File $file) {
-					return $this->formatFile($file);
-				}, $this->getTemplateFiles($entry->getMimetypes()))
+				'templates' => $this->getTemplateFiles($entry)
 			]);
 		}, $this->types);
 	}
 
 	/**
 	 * @param string $filePath
-	 * @param string $templatePath
+	 * @param string $templateId
 	 * @return array
 	 * @throws GenericFileException
 	 */
-	public function createFromTemplate(string $filePath, string $templatePath = ''): array {
+	public function createFromTemplate(string $filePath, string $templateId = '', string $templateType = 'user'): array {
 		$userFolder = $this->rootFolder->getUserFolder($this->userId);
 		try {
 			$userFolder->get($filePath);
-			throw new GenericFileException('File already exists');
-		} catch (NotFoundException $e) {}
+			throw new GenericFileException($this->l10n->t('File already exists'));
+		} catch (NotFoundException $e) {
+		}
 		try {
 			$targetFile = $userFolder->newFile($filePath);
-			if ($templatePath !== '') {
-				$template = $userFolder->get($templatePath);
+			if ($templateType === 'user' && $templateId !== '') {
+				$template = $userFolder->get($templateId);
 				$template->copy($targetFile->getPath());
-				// FIXME in order to support custom template creation handling like for Collabora
-				// we should check if there is a TemplateType that supports custom handling here and trigger it
+			} else {
+				$matchingProvider = array_filter($this->getRegisteredProviders(), function (ICustomTemplateProvider $provider) use ($templateType) {
+					return $templateType === get_class($provider);
+				});
+				$provider = array_shift($matchingProvider);
+				if ($provider) {
+					$template = $provider->getCustomTemplate($templateId);
+					$template->copy($targetFile->getPath());
+				}
 			}
+			$this->eventDispatcher->dispatchTyped(new CreatedFromTemplateEvent($template, $targetFile));
 			return $this->formatFile($userFolder->get($filePath));
 		} catch (\Exception $e) {
 			$this->logger->error($e->getMessage(), ['exception' => $e]);
-			throw new GenericFileException('Failed to create file from template');
+			throw new GenericFileException($this->l10n->t('Failed to create file from template'));
 		}
-
 	}
 
 	/**
@@ -123,18 +153,30 @@ class TemplateManager implements ITemplateManager {
 		return $this->rootFolder->getUserFolder($this->userId)->get($this->getTemplatePath());
 	}
 
-	private function getTemplateFiles(array $mimetypes): array {
+	private function getTemplateFiles(TemplateFileCreator $type): array {
+		$templates = [];
+		foreach ($this->getRegisteredProviders() as $provider) {
+			foreach ($type->getMimetypes() as $mimetype) {
+				foreach ($provider->getCustomTemplates($mimetype) as $template) {
+					$templates[] = $template;
+				}
+			}
+		}
 		try {
 			$userTemplateFolder = $this->getTemplateFolder();
 		} catch (\Exception $e) {
-			return [];
+			return $templates;
 		}
-		$templates = [];
-		foreach ($mimetypes as $mimetype) {
-			foreach ($userTemplateFolder->searchByMime($mimetype) as $template) {
-				$templates[] = $template;
+		foreach ($type->getMimetypes() as $mimetype) {
+			foreach ($userTemplateFolder->searchByMime($mimetype) as $templateFile) {
+				$templates[] = new \OCP\Files\Template\Template(
+					'user',
+					$this->rootFolder->getUserFolder($this->userId)->getRelativePath($templateFile->getPath()),
+					$templateFile
+				);
 			}
 		}
+
 		return $templates;
 	}
 
@@ -162,7 +204,8 @@ class TemplateManager implements ITemplateManager {
 		try {
 			$this->getTemplateFolder();
 			return true;
-		} catch (\Exception $e) {}
+		} catch (\Exception $e) {
+		}
 		return false;
 	}
 

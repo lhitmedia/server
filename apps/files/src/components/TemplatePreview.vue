@@ -32,7 +32,7 @@
 		<label class="template-picker__preview" :for="id">
 			<img class="template-picker__image"
 				:class="failedPreview ? 'template-picker__image--failed' : ''"
-				:src="previewUrl"
+				:src="realPreviewUrl"
 				alt=""
 				@error="onFailure">
 

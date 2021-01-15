@@ -23,48 +23,42 @@
 
 declare(strict_types=1);
 
+
 namespace OCP\Files\Template;
+
+use OCP\EventDispatcher\Event;
+use OCP\Files\File;
 
 /**
  * @since 21.0.0
  */
-class TemplateType implements \JsonSerializable {
+class CreatedFromTemplateEvent extends Event {
+	private $template;
+	private $target;
 
-	protected $appId;
-	protected $mimetypes = [];
-	protected $actionName;
-	protected $fileExtension;
-	protected $iconClass;
-
-	public function __construct(
-		string $appId, string $actionName, string $fileExtension
-	) {
-		$this->appId = $appId;
-		$this->actionName = $actionName;
-		$this->fileExtension = $fileExtension;
+	/**
+	 * @param File|null $template
+	 * @param File $target
+	 * @since 21.0.0
+	 */
+	public function __construct(?File $template, File $target) {
+		$this->template = $template;
+		$this->target = $target;
 	}
 
-	public function setIconClass(string $iconClass): TemplateType {
-		$this->iconClass = $iconClass;
-		return $this;
+	/**
+	 * @return File|null
+	 * @since 21.0.0
+	 */
+	public function getTemplate(): ?File {
+		return $this->template;
 	}
 
-	public function addMimetype(string $mimetype): TemplateType {
-		$this->mimetypes[] = $mimetype;
-		return $this;
-	}
-
-	public function getMimetypes(): array {
-		return $this->mimetypes;
-	}
-
-	final public function jsonSerialize() {
-		return [
-			'app' => $this->appId,
-			'label' => $this->actionName,
-			'extension' => $this->fileExtension,
-			'iconClass' => $this->iconClass,
-			'mimetypes' => $this->mimetypes
-		];
+	/**
+	 * @return File
+	 * @since 21.0.0
+	 */
+	public function getTarget(): File {
+		return $this->target;
 	}
 }
